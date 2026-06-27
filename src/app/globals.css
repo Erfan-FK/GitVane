@@ -2,25 +2,183 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0a0a0a;
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --border: #e7e7e7;
+  --input: #e7e7e7;
+  --ring: #0a0a0a;
+  --accent: #f5f5f5;
+  --accent-foreground: #0a0a0a;
+  --radius: 0.875rem;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --muted: #161616;
+  --muted-foreground: #a1a1a1;
+  --card: #0e0e0e;
+  --card-foreground: #fafafa;
+  --border: #232323;
+  --input: #232323;
+  --ring: #fafafa;
+  --accent: #1a1a1a;
+  --accent-foreground: #fafafa;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 0.25rem);
+  --radius-sm: calc(var(--radius) - 0.5rem);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--border);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+@keyframes gv-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.gv-grid-bg {
+  background-image:
+    linear-gradient(to right, var(--border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 30%, transparent 80%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 30%, transparent 80%);
+}
+
+/* Markdown preview styling (monochrome) */
+.gv-prose {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--foreground);
+}
+.gv-prose h1 {
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.75rem;
+}
+.gv-prose h2 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 1.6rem 0 0.6rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--border);
+}
+.gv-prose h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 1.2rem 0 0.4rem;
+}
+.gv-prose p {
+  margin: 0.6rem 0;
+}
+.gv-prose ul,
+.gv-prose ol {
+  margin: 0.6rem 0;
+  padding-left: 1.3rem;
+}
+.gv-prose li {
+  margin: 0.25rem 0;
+}
+.gv-prose ul {
+  list-style: disc;
+}
+.gv-prose ol {
+  list-style: decimal;
+}
+.gv-prose a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.gv-prose code {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.82em;
+  background: var(--muted);
+  padding: 0.12em 0.38em;
+  border-radius: 0.35rem;
+}
+.gv-prose pre {
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+  margin: 0.8rem 0;
+}
+.gv-prose pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+.gv-prose blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 1rem;
+  color: var(--muted-foreground);
+  margin: 0.8rem 0;
+}
+.gv-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.8rem 0;
+  font-size: 0.85rem;
+}
+.gv-prose th,
+.gv-prose td {
+  border: 1px solid var(--border);
+  padding: 0.45rem 0.7rem;
+  text-align: left;
+}
+.gv-prose th {
+  background: var(--muted);
+  font-weight: 600;
+}
+.gv-prose hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.2rem 0;
 }

@@ -12,7 +12,7 @@ export function LogoMark({ className }: { className?: string }) {
       viewBox="0 0 1024 1048"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={cn("size-7", className)}
+      className={cn("size-8", className)}
       aria-hidden="true"
     >
       <path
@@ -37,7 +37,9 @@ export function Logo({
     <span className={cn("inline-flex items-center gap-2", className)}>
       <LogoMark className={markClassName} />
       {showWordmark && (
-        <span className="text-lg font-semibold tracking-tight">GitVane</span>
+        <span className="text-lg font-semibold tracking-tight">
+          Git<span className="text-muted-foreground">Vane</span>
+        </span>
       )}
     </span>
   );

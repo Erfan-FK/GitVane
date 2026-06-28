@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { GithubIcon } from "@/components/icons/github";
 import { getCurrentUser } from "@/lib/supabase/auth";
 import { UserMenu } from "@/components/site/user-menu";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 const nav = [
   { href: "/how-it-works", label: "How it works" },
@@ -32,7 +33,8 @@ export async function SiteHeader() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <ThemeToggle />
           {user ? (
             <UserMenu user={user} />
           ) : (

@@ -5,6 +5,8 @@ export interface TreeNode {
   path: string;
   type: "file" | "dir";
   children: TreeNode[];
+  /** Present on file leaves: the billing tier of the generated file. */
+  tier?: "free" | "premium";
 }
 
 /** Builds a nested directory tree from a flat list of generated files. */
@@ -26,6 +28,7 @@ export function buildFileTree(files: GeneratedFile[]): TreeNode {
           path: acc,
           type: isLeaf ? "file" : "dir",
           children: [],
+          ...(isLeaf ? { tier: file.tier } : {}),
         };
         current.children.push(next);
       }

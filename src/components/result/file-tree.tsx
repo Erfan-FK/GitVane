@@ -2,7 +2,7 @@
 
 import type { TreeNode } from "@/lib/file-tree";
 import { cn } from "@/lib/utils";
-import { ChevronDown, FileText, Folder } from "lucide-react";
+import { ChevronDown, FileText, Folder, Sparkles } from "lucide-react";
 
 export function FileTree({
   root,
@@ -73,6 +73,12 @@ function TreeItem({
     >
       <FileText className="size-4 shrink-0" />
       <span className="truncate font-mono text-xs">{node.name}</span>
+      {node.tier === "premium" && (
+        <Sparkles
+          className="ml-auto size-3 shrink-0 text-amber-500"
+          aria-label="Premium file"
+        />
+      )}
     </button>
   );
 }

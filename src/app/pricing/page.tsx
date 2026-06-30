@@ -22,9 +22,9 @@ const tiers = [
     features: [
       "Public GitHub repos",
       "Agent Readiness Score",
-      "All Stage 1 files (AGENTS.md, Cursor, Copilot, Windsurf, docs)",
+      "Generic files: AGENTS.md, llms.txt, Cursor, Copilot, Windsurf, validation, failure-modes",
+      "Facts-first, templated prose (no API key needed)",
       "Copy & download as zip",
-      "Fast quick-scan analysis",
     ],
   },
   {
@@ -35,11 +35,11 @@ const tiers = [
     highlighted: true,
     features: [
       "Everything in Free",
-      "Deep Analyze (AST, monorepo, auth-flow)",
-      "Path-scoped Copilot instructions",
-      "docs/auth-flow, database, env-vars, component-map",
-      "Saved history & re-analysis",
-      "Private repos",
+      "LLM-written, repo-specific prose on every generated file",
+      "Specialized files: design-system, api-map, auth-flow, database, env-vars",
+      "Path-scoped Copilot instructions (frontend/backend)",
+      "Deep Analyze (AST, monorepo) for higher accuracy",
+      "Saved history, re-analysis & private repos",
     ],
   },
 ];

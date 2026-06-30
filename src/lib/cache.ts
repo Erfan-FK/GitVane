@@ -15,22 +15,28 @@ const store = new Map<string, CacheEntry>();
 
 const TTL_MS = 1000 * 60 * 60; // 1 hour
 
-function key(owner: string, repo: string): string {
-  return `${owner.toLowerCase()}/${repo.toLowerCase()}`;
+function key(owner: string, repo: string, scopeKey = ""): string {
+  const base = `${owner.toLowerCase()}/${repo.toLowerCase()}`;
+  return scopeKey ? `${base}#${scopeKey}` : base;
 }
 
-export function getCached(owner: string, repo: string): AnalysisResult | null {
-  const entry = store.get(key(owner, repo));
+export function getCached(owner: string, repo: string, scopeKey = ""): AnalysisResult | null {
+  const entry = store.get(key(owner, repo, scopeKey));
   if (!entry) return null;
   if (Date.now() > entry.expiresAt) {
-    store.delete(key(owner, repo));
+    store.delete(key(owner, repo, scopeKey));
     return null;
   }
   return entry.result;
 }
 
-export function setCached(owner: string, repo: string, result: AnalysisResult): void {
-  store.set(key(owner, repo), {
+export function setCached(
+  owner: string,
+  repo: string,
+  result: AnalysisResult,
+  scopeKey = "",
+): void {
+  store.set(key(owner, repo, scopeKey), {
     sha: result.profile.commitSha,
     result,
     expiresAt: Date.now() + TTL_MS,

@@ -1,4 +1,5 @@
 import { createGitHubClient, GitHubError } from "@/lib/github/client";
+import { applyScopeToTree, type ScopeOptions } from "@/lib/scope";
 
 export interface TreeEntry {
   path: string;
@@ -59,6 +60,7 @@ export async function fetchRepoData(
   owner: string,
   repo: string,
   token?: string | null,
+  scope?: ScopeOptions | null,
 ): Promise<RawRepoData> {
   const gh = createGitHubClient(token);
 
@@ -90,13 +92,16 @@ export async function fetchRepoData(
     recursive: "1",
   });
 
-  const tree: TreeEntry[] = (treeRes.data.tree || [])
+  const fullTree: TreeEntry[] = (treeRes.data.tree || [])
     .filter((t) => t.path && (t.type === "blob" || t.type === "tree"))
     .map((t) => ({
       path: t.path as string,
       type: t.type as "blob" | "tree",
       size: t.size ?? 0,
     }));
+
+  // Apply gitingest-style scope (include/exclude/file-types/size) if provided.
+  const tree = applyScopeToTree(fullTree, scope);
 
   const treePaths = new Set(tree.filter((t) => t.type === "blob").map((t) => t.path));
 

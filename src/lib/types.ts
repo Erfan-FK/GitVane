@@ -83,6 +83,8 @@ export const GeneratedFileSchema = z.object({
   language: z.string().default("markdown"),
   // Whether this file's prose was synthesized by the LLM or built from templates.
   source: z.enum(["template", "llm", "llm-verified"]).default("template"),
+  // Billing tier this file belongs to. Premium files require Deep Analyze.
+  tier: z.enum(["free", "premium"]).default("free"),
 });
 export type GeneratedFile = z.infer<typeof GeneratedFileSchema>;
 

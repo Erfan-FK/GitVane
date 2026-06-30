@@ -7,6 +7,7 @@ import { analyzeRepo } from "@/lib/analyze";
 import { GitHubError } from "@/lib/github/client";
 import { getCurrentUser } from "@/lib/supabase/auth";
 import { saveAnalysisForUser } from "@/lib/history";
+import { scopeFromSearchParams, isScopeEmpty } from "@/lib/scope";
 
 export async function generateMetadata(
   props: PageProps<"/result/[owner]/[repo]">,
@@ -20,10 +21,14 @@ export async function generateMetadata(
 
 export default async function ResultPage(props: PageProps<"/result/[owner]/[repo]">) {
   const { owner, repo } = await props.params;
+  const searchParams = await props.searchParams;
+  const scope = scopeFromSearchParams(searchParams);
 
   let result;
   try {
-    result = await analyzeRepo(owner, repo);
+    result = await analyzeRepo(owner, repo, {
+      scope: isScopeEmpty(scope) ? null : scope,
+    });
   } catch (err) {
     if (err instanceof GitHubError && err.status === 404) {
       notFound();

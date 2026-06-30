@@ -18,19 +18,13 @@ export default function Home() {
             <span className="text-muted-foreground">agent-ready.</span>
           </h1>
 
-          <p className="mt-5 max-w-xl text-balance text-base text-muted-foreground sm:text-lg">
-            Generate AGENTS.md, Copilot instructions, Cursor rules, validation
-            runbooks, design rules, and API maps from any GitHub repository — so
-            you stop explaining your repo to AI tools every time.
+          <p className="mt-5 text-balance text-base text-muted-foreground sm:text-lg">
+            Generate the files AI agents need to understand your repo.
           </p>
 
           <div className="mt-9 w-full max-w-xl">
             <RepoInput />
           </div>
-
-          <p className="mt-8 text-xs text-muted-foreground">
-            Works with public repos · No sign-in required
-          </p>
         </div>
       </main>
       <SiteFooter />

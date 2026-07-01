@@ -3,8 +3,9 @@ import { SiteHeader } from "@/components/site/header";
 import { SiteFooter } from "@/components/site/footer";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FILE_CATALOG, STAGE2_CATALOG, type FileDoc, type IconKey } from "@/lib/file-catalog";
+import { FILE_CATALOG, type FileDoc, type IconKey } from "@/lib/file-catalog";
 import { Reveal } from "@/components/docs/reveal";
+import { BeforeAfter } from "@/components/site/before-after";
 import {
   ArrowRight,
   FileText,
@@ -82,6 +83,13 @@ export default function DocsPage() {
           </header>
 
           <Reveal>
+            <div className="mb-10" data-reveal>
+              <div className="mb-3 text-sm font-medium text-muted-foreground">
+                Why these files matter
+              </div>
+              <BeforeAfter />
+            </div>
+
             <LlmsExplainer />
 
             <SectionHeading
@@ -110,7 +118,7 @@ export default function DocsPage() {
 
             <SectionHeading
               title="Deep files"
-              sub="Generated when GitVane detects frontend, backend, or other systems."
+              sub="Generated automatically when GitVane detects frontend, backend, auth, a database, or environment variables."
             />
             <div className="space-y-4">
               {FILE_CATALOG.filter((d) => !UNIVERSAL.has(d.path) && !EDITOR.has(d.path)).map(
@@ -120,21 +128,6 @@ export default function DocsPage() {
                   </div>
                 ),
               )}
-            </div>
-
-            <h2 className="mb-4 mt-14 text-2xl font-semibold tracking-tight">
-              Coming soon: specialized files
-            </h2>
-            <p className="mb-6 max-w-2xl text-muted-foreground">
-              Deep Analyze will add path-scoped instructions and deeper docs derived
-              from your code&apos;s structure.
-            </p>
-            <div className="space-y-4">
-              {STAGE2_CATALOG.map((doc) => (
-                <div key={doc.path} data-reveal>
-                  <DocCard doc={doc} dimmed />
-                </div>
-              ))}
             </div>
           </Reveal>
         </div>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { BeforeAfter } from "@/components/site/before-after";
 import { useGsapContext, prefersReducedMotion } from "@/lib/use-gsap";
 import {
   ClaudeLogo,
@@ -17,8 +18,8 @@ import {
   Check,
   Copy,
   FileText,
+  LoaderCircle,
   Search,
-  ShieldCheck,
   Sparkles,
 } from "lucide-react";
 
@@ -37,24 +38,21 @@ const STEPS: StepText[] = [
   {
     n: "02",
     title: "Paste it into GitVane",
-    body: "Drop the URL into the search bar and hit Analyze. GitVane scans the file tree and key config files.",
+    body: "Drop the URL in and hit Analyze. GitVane scans the file tree and key config files.",
   },
   {
     n: "03",
-    title: "Get an Agent Readiness Score",
-    body: "A facts-first scan detects your stack and scores how ready the repo is for AI agents — and what's missing.",
+    title: "Get the score and the files",
+    body: "An Agent Readiness Score plus AGENTS.md, llms.txt, editor rules, validation and more — commands pulled straight from your repo.",
   },
   {
     n: "04",
-    title: "Generate the agent files",
-    body: "AGENTS.md, llms.txt, Cursor / Copilot / Windsurf rules, validation and failure-mode docs — commands pulled straight from your repo.",
-  },
-  {
-    n: "05",
     title: "Drop them into your editor",
-    body: "Commit the files. Every future AI session in Cursor, Claude Code, Copilot or Windsurf starts already understanding your repo.",
+    body: "Commit the files. Every future AI session starts already understanding your repo.",
   },
 ];
+
+const REPO_URL = "https://github.com/vercel/next.js";
 
 export function HowItWorks() {
   const [reduced, setReduced] = useState(false);
@@ -62,7 +60,7 @@ export function HowItWorks() {
 
   return (
     <div className="w-full">
-      <header className="mx-auto w-full max-w-3xl px-5 pb-4 pt-16 text-center">
+      <header className="mx-auto w-full max-w-3xl px-5 pb-8 pt-16 text-center">
         <Badge variant="outline" className="mb-4">
           How it works
         </Badge>
@@ -70,12 +68,27 @@ export function HowItWorks() {
           Watch a repo become agent-ready
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
-          From a GitHub link to operating files your AI agents actually read —
-          generated once, useful in every session after.
+          Copy a GitHub link, paste it into GitVane, get the operating files your
+          AI agents actually read — generated once, useful in every session after.
         </p>
       </header>
 
-      {reduced ? <StaticStory /> : <ScrollStory />}
+      <div className="mx-auto w-full max-w-3xl px-5">
+        {reduced ? <StaticDemo /> : <LoopDemo />}
+      </div>
+
+      {/* Compact step legend */}
+      <div className="mx-auto mt-10 grid w-full max-w-4xl gap-3 px-5 sm:grid-cols-4">
+        {STEPS.map((s) => (
+          <div key={s.n} className="rounded-lg border border-border bg-card p-4">
+            <div className="font-mono text-xs text-muted-foreground">{s.n}</div>
+            <div className="mt-1 text-sm font-semibold">{s.title}</div>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              {s.body}
+            </p>
+          </div>
+        ))}
+      </div>
 
       <Differentiator />
     </div>
@@ -83,133 +96,216 @@ export function HowItWorks() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Animated, scroll-scrubbed story                                     */
+/* Looping, auto-playing product demo (single GSAP timeline)          */
 /* ------------------------------------------------------------------ */
 
-function ScrollStory() {
-  const progressRef = useRef<HTMLDivElement>(null);
+const FILES = [
+  { name: "AGENTS.md", icon: <FileText className="size-3.5 text-emerald-500" /> },
+  { name: "llms.txt", icon: <Sparkles className="size-3.5 text-sky-500" /> },
+  { name: "CLAUDE.md", icon: <ClaudeLogo className="size-3.5 text-orange-500" /> },
+  { name: ".cursor/rules", icon: <CursorLogo className="size-3.5" /> },
+  { name: "copilot", icon: <CopilotLogo className="size-3.5" /> },
+  { name: ".windsurf/rules", icon: <WindsurfLogo className="size-3.5 text-teal-500" /> },
+];
+
+function LoopDemo() {
+  const scoreRef = useRef<HTMLSpanElement>(null);
+  const urlRef = useRef<HTMLSpanElement>(null);
 
   const scope = useGsapContext(({ gsap }) => {
-    const scenes = gsap.utils.toArray<HTMLElement>(".gv-scene");
-    const labels = gsap.utils.toArray<HTMLElement>(".gv-step-label");
+    const root = scope.current!;
+    const q = gsap.utils.selector(root);
+    const stage = q(".gv-stage")[0] as HTMLElement;
+    const cursor = q(".gv-cursor")[0] as HTMLElement;
+    const ripple = q(".gv-ripple")[0] as HTMLElement;
+    const ghScreen = q(".gv-screen-gh")[0] as HTMLElement;
+    const appScreen = q(".gv-screen-app")[0] as HTMLElement;
+    const copyBtn = q(".gv-copy-btn")[0] as HTMLElement;
+    const analyzeBtn = q(".gv-analyze-btn")[0] as HTMLElement;
+    const copyLabel = q(".gv-copy-label")[0] as HTMLElement;
+    const results = q(".gv-results")[0] as HTMLElement;
+    const loading = q(".gv-loading")[0] as HTMLElement;
+    const chips = q(".gv-chip");
 
-    // All scenes start hidden except the first.
-    gsap.set(scenes, { autoAlpha: 0, y: 24 });
-    gsap.set(scenes[0], { autoAlpha: 1, y: 0 });
-    gsap.set(labels, { opacity: 0.35 });
-    gsap.set(labels[0], { opacity: 1 });
+    // Position helper: center of an element, relative to the stage.
+    const center = (el: HTMLElement) => {
+      const s = stage.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      return { x: r.left - s.left + r.width / 2, y: r.top - s.top + r.height / 2 };
+    };
 
-    const tl = gsap.timeline({
-      scrollTrigger: {
-        trigger: ".gv-story",
-        start: "top top",
-        end: "bottom bottom",
-        scrub: 0.6,
-      },
-    });
+    const url = REPO_URL;
+    const typed = { n: 0 };
 
-    scenes.forEach((scene, i) => {
-      if (i === 0) {
-        // Intra-scene reveal for the first scene's inner elements.
-        tl.from(scene.querySelectorAll<HTMLElement>("[data-pop]"), {
-          autoAlpha: 0,
-          y: 12,
-          stagger: 0.15,
-          duration: 0.4,
-        });
-        return;
-      }
-      const prev = scenes[i - 1];
-      tl.to(prev, { autoAlpha: 0, y: -24, duration: 0.4 })
-        .to(labels[i - 1], { opacity: 0.35, duration: 0.3 }, "<")
-        .to(scene, { autoAlpha: 1, y: 0, duration: 0.4 }, "<0.1")
-        .to(labels[i], { opacity: 1, duration: 0.3 }, "<")
-        .from(
-          scene.querySelectorAll<HTMLElement>("[data-pop]"),
-          { autoAlpha: 0, y: 12, stagger: 0.12, duration: 0.4 },
-          "<0.1",
-        )
-        .to({}, { duration: 0.5 }); // hold
-    });
-
-    // Score counter for scene 03.
-    const counter = progressRef.current;
-    if (counter) {
-      const obj = { v: 0 };
-      gsap.to(obj, {
-        v: 87,
-        ease: "none",
-        scrollTrigger: {
-          trigger: ".gv-scene-score",
-          start: "top center",
-          end: "bottom center",
-          scrub: true,
-        },
-        onUpdate: () => {
-          counter.textContent = String(Math.round(obj.v));
-        },
-      });
+    function reset() {
+      gsap.set(ghScreen, { autoAlpha: 1 });
+      gsap.set(appScreen, { autoAlpha: 0 });
+      gsap.set(results, { autoAlpha: 0 });
+      gsap.set(loading, { autoAlpha: 0 });
+      gsap.set(chips, { autoAlpha: 0, y: 8 });
+      gsap.set(copyLabel, { textContent: "Copy URL" });
+      typed.n = 0;
+      if (urlRef.current) urlRef.current.textContent = "";
+      if (scoreRef.current) scoreRef.current.textContent = "0";
+      const c = center(copyBtn);
+      gsap.set(cursor, { x: c.x - 60, y: c.y + 90, autoAlpha: 1 });
     }
+
+    function click(label: string) {
+      const tl = gsap.timeline();
+      tl.to(cursor, { scale: 0.85, duration: 0.08, ease: "power2.out" }, label)
+        .set(ripple, { autoAlpha: 0.5, scale: 0.3 }, label)
+        .to(ripple, { scale: 3, autoAlpha: 0, duration: 0.5, ease: "power2.out" }, label)
+        .to(cursor, { scale: 1, duration: 0.18, ease: "back.out(2.2)" }, `${label}+=0.09`);
+      return tl;
+    }
+
+    reset();
+
+    const moveTo = (el: HTMLElement, dur = 0.7) => {
+      const p = center(el);
+      return { x: p.x, y: p.y, duration: dur, ease: "power3.inOut" };
+    };
+
+    const master = gsap.timeline({ repeat: -1, repeatDelay: 1, defaults: { ease: "power3.out" } });
+
+    master
+      // 1. Move to the GitHub copy button and click.
+      .to(cursor, moveTo(copyBtn), "+=0.4")
+      .add(click("copy"), ">-0.1")
+      .set(copyLabel, { textContent: "Copied!" }, ">")
+      .to({}, { duration: 0.5 })
+      // 2. Crossfade to the GitVane app.
+      .to(ghScreen, { autoAlpha: 0, duration: 0.4 })
+      .to(appScreen, { autoAlpha: 1, duration: 0.4 }, "<0.1")
+      // move cursor toward the search field
+      .to(cursor, moveTo(urlRef.current!.parentElement as HTMLElement, 0.6), "<")
+      // 3. Type the URL (constant speed).
+      .to(typed, {
+        n: url.length,
+        duration: 1.1,
+        ease: "none",
+        onUpdate: () => {
+          if (urlRef.current) urlRef.current.textContent = url.slice(0, Math.round(typed.n));
+        },
+      })
+      // 4. Move to Analyze and click.
+      .to(cursor, moveTo(analyzeBtn, 0.5), "+=0.2")
+      .add(click("analyze"), ">-0.1")
+      // 5. Loading.
+      .to(loading, { autoAlpha: 1, duration: 0.3 }, ">")
+      .to({}, { duration: 0.9 })
+      .to(loading, { autoAlpha: 0, duration: 0.3 })
+      // 6. Reveal results + count the score + stagger file chips.
+      .to(results, { autoAlpha: 1, duration: 0.4 })
+      .to(
+        { v: 0 },
+        {
+          v: 92,
+          duration: 1,
+          ease: "power1.out",
+          onUpdate: function () {
+            if (scoreRef.current)
+              scoreRef.current.textContent = String(Math.round(this.targets()[0].v));
+          },
+        },
+        "<",
+      )
+      .to(chips, { autoAlpha: 1, y: 0, stagger: 0.08, duration: 0.3 }, "<0.2")
+      // 7. Hold, then fade out and reset for the loop.
+      .to({}, { duration: 2.4 })
+      .to([appScreen, cursor], { autoAlpha: 0, duration: 0.5 })
+      .add(() => reset());
   }, []);
 
   return (
-    <div ref={scope} className="relative">
-      {/* Tall scroll track; the panel sticks while we scrub through scenes. */}
-      <div className="gv-story relative mx-auto max-w-5xl px-5" style={{ height: "440vh" }}>
-        <div className="sticky top-0 flex h-screen flex-col items-center justify-center gap-6">
-          {/* step rail */}
-          <div className="flex items-center gap-2">
-            {STEPS.map((s) => (
-              <div
-                key={s.n}
-                className="gv-step-label flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 font-mono text-[11px]"
-              >
-                {s.n}
+    <div ref={scope}>
+      <div className="gv-stage relative mx-auto aspect-[4/3] w-full max-w-2xl sm:aspect-[16/10]">
+        {/* GitHub screen */}
+        <div className="gv-screen-gh absolute inset-0">
+          <BrowserChrome url="github.com/vercel/next.js" label="GitHub">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold sm:text-base">vercel / next.js</div>
+                <div className="text-xs text-muted-foreground">The React Framework</div>
               </div>
-            ))}
-          </div>
+              <div className="gv-copy-btn inline-flex items-center gap-1.5 rounded-md bg-foreground px-3 py-2 text-xs font-medium text-background">
+                <Copy className="size-3.5" />
+                <span className="gv-copy-label">Copy URL</span>
+              </div>
+            </div>
+            <div className="mt-4 space-y-1.5">
+              {["app/", "packages/", "docs/", "package.json"].map((f) => (
+                <div key={f} className="font-mono text-xs text-muted-foreground">
+                  {f}
+                </div>
+              ))}
+            </div>
+          </BrowserChrome>
+        </div>
 
-          {/* stage */}
-          <div className="relative h-[420px] w-full max-w-2xl">
-            <SceneShell>
-              <SceneCopy />
-            </SceneShell>
-            <SceneShell>
-              <ScenePaste />
-            </SceneShell>
-            <SceneShell className="gv-scene-score">
-              <SceneScore counterRef={progressRef} />
-            </SceneShell>
-            <SceneShell>
-              <SceneFiles />
-            </SceneShell>
-            <SceneShell>
-              <SceneEditor />
-            </SceneShell>
-          </div>
+        {/* GitVane app screen */}
+        <div className="gv-screen-app absolute inset-0">
+          <BrowserChrome url="gitvane.app" label="GitVane">
+            <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
+              <Search className="size-4 shrink-0 text-muted-foreground" />
+              <span className="flex-1 truncate font-mono text-xs sm:text-sm">
+                <span ref={urlRef} />
+                <span className="gv-caret">|</span>
+              </span>
+              <span className="gv-analyze-btn inline-flex items-center gap-1 rounded-md bg-foreground px-2.5 py-1.5 text-xs font-medium text-background">
+                Analyze <ArrowRight className="size-3" />
+              </span>
+            </div>
+
+            <div className="gv-loading absolute inset-x-5 top-1/2 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <LoaderCircle className="size-4 animate-spin" />
+              Analyzing repository…
+            </div>
+
+            <div className="gv-results mt-4 grid gap-3 sm:grid-cols-[auto_1fr]">
+              <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-muted/30 px-4 py-3">
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  Readiness
+                </div>
+                <div className="flex items-baseline">
+                  <span ref={scoreRef} className="text-3xl font-semibold tabular-nums">
+                    0
+                  </span>
+                  <span className="text-sm text-muted-foreground">/100</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {FILES.map((f) => (
+                  <div
+                    key={f.name}
+                    className="gv-chip flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1.5"
+                  >
+                    {f.icon}
+                    <span className="truncate font-mono text-[11px]">{f.name}</span>
+                    <Check className="ml-auto size-3 text-emerald-500" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </BrowserChrome>
+        </div>
+
+        {/* Fake cursor */}
+        <div className="gv-cursor pointer-events-none absolute left-0 top-0 z-20 -ml-1 -mt-1">
+          <div className="gv-ripple absolute left-1/2 top-1/2 size-8 -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground/30 opacity-0" />
+          <svg viewBox="0 0 24 24" className="size-5 drop-shadow-sm" aria-hidden>
+            <path
+              d="M5 3l14 7-6 2-2 6-6-15z"
+              className="fill-foreground stroke-background"
+              strokeWidth="1.2"
+            />
+          </svg>
         </div>
       </div>
     </div>
   );
 }
-
-function SceneShell({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      className={`gv-scene absolute inset-0 flex flex-col items-center justify-center ${className ?? ""}`}
-    >
-      {children}
-    </div>
-  );
-}
-
-/* ---- individual scenes ---- */
 
 function BrowserChrome({
   url,
@@ -221,7 +317,7 @@ function BrowserChrome({
   label?: string;
 }) {
   return (
-    <Card className="w-full overflow-hidden p-0">
+    <Card className="flex h-full flex-col overflow-hidden p-0 shadow-md">
       <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-3 py-2">
         <span className="size-2.5 rounded-full bg-foreground/15" />
         <span className="size-2.5 rounded-full bg-foreground/15" />
@@ -235,161 +331,8 @@ function BrowserChrome({
           </span>
         )}
       </div>
-      <div className="p-5">{children}</div>
+      <div className="relative flex-1 p-5">{children}</div>
     </Card>
-  );
-}
-
-function SceneCopy() {
-  return (
-    <div className="w-full">
-      <p className="mb-3 text-center text-sm font-medium text-muted-foreground" data-pop>
-        <span className="font-mono text-xs">01</span> · Copy the repo URL from GitHub
-      </p>
-      <BrowserChrome url="github.com/vercel/next.js" label="GitHub">
-        <div className="flex items-center justify-between gap-3" data-pop>
-          <div>
-            <div className="text-sm font-semibold">vercel / next.js</div>
-            <div className="text-xs text-muted-foreground">
-              The React Framework
-            </div>
-          </div>
-          <div
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-foreground px-2.5 py-1.5 text-xs font-medium text-background"
-            data-pop
-          >
-            <Copy className="size-3.5" />
-            Copy URL
-          </div>
-        </div>
-      </BrowserChrome>
-    </div>
-  );
-}
-
-function ScenePaste() {
-  return (
-    <div className="w-full">
-      <p className="mb-3 text-center text-sm font-medium text-muted-foreground" data-pop>
-        <span className="font-mono text-xs">02</span> · Paste it into GitVane
-      </p>
-      <Card className="p-2" data-pop>
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          <Search className="size-5 shrink-0 text-muted-foreground" />
-          <span className="flex-1 truncate font-mono text-sm">
-            https://github.com/vercel/next.js
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-foreground px-3 py-2 text-xs font-medium text-background">
-            Analyze <ArrowRight className="size-3.5" />
-          </span>
-        </div>
-      </Card>
-      <div className="mt-3 text-center text-xs text-muted-foreground" data-pop>
-        Scanning file tree &amp; config files…
-      </div>
-    </div>
-  );
-}
-
-function SceneScore({
-  counterRef,
-}: {
-  counterRef: React.RefObject<HTMLDivElement | null>;
-}) {
-  const stack = ["Next.js", "TypeScript", "pnpm", "Turbopack", "Vitest"];
-  return (
-    <div className="grid w-full gap-4 sm:grid-cols-2">
-      <Card className="flex flex-col items-center justify-center p-6" data-pop>
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">
-          Agent Readiness
-        </div>
-        <div className="mt-1 flex items-baseline">
-          <div ref={counterRef} className="text-6xl font-semibold tabular-nums">
-            0
-          </div>
-          <span className="text-2xl text-muted-foreground">/100</span>
-        </div>
-      </Card>
-      <Card className="p-5" data-pop>
-        <div className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
-          Detected stack
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {stack.map((s) => (
-            <span
-              key={s}
-              className="rounded-md border border-border bg-muted/40 px-2 py-0.5 font-mono text-xs"
-              data-pop
-            >
-              {s}
-            </span>
-          ))}
-        </div>
-        <div className="mt-3 text-xs text-muted-foreground" data-pop>
-          Missing: AGENTS.md · Cursor rules · validation guide
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-function SceneFiles() {
-  const files = [
-    { name: "AGENTS.md", icon: <FileText className="size-4 text-emerald-500" /> },
-    { name: "llms.txt", icon: <Sparkles className="size-4 text-sky-500" /> },
-    { name: "CLAUDE.md", icon: <ClaudeLogo className="size-4 text-orange-500" /> },
-    { name: ".cursor/rules", icon: <CursorLogo className="size-4" /> },
-    { name: "copilot-instructions", icon: <CopilotLogo className="size-4" /> },
-    { name: ".windsurf/rules", icon: <WindsurfLogo className="size-4 text-teal-500" /> },
-  ];
-  return (
-    <div className="w-full">
-      <p className="mb-3 text-center text-sm font-medium text-muted-foreground" data-pop>
-        <span className="font-mono text-xs">04</span> · Generate the agent files
-      </p>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {files.map((f) => (
-          <Card
-            key={f.name}
-            className="flex items-center gap-2 p-3"
-            data-pop
-          >
-            {f.icon}
-            <span className="truncate font-mono text-xs">{f.name}</span>
-            <Check className="ml-auto size-3.5 text-emerald-500" />
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SceneEditor() {
-  return (
-    <div className="w-full">
-      <p className="mb-3 text-center text-sm font-medium text-muted-foreground" data-pop>
-        <span className="font-mono text-xs">05</span> · Drop them into your editor
-      </p>
-      <BrowserChrome url="cursor · vercel/next.js" label="Cursor">
-        <div className="space-y-2" data-pop>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <CursorLogo className="size-4" />
-            Agent context loaded from AGENTS.md
-          </div>
-          <div className="rounded-md border border-border bg-muted/30 p-3 text-xs leading-relaxed">
-            <span className="text-muted-foreground">You:</span> add a new API
-            route
-            <br />
-            <span className="text-emerald-500">Agent:</span> Using pnpm, App
-            Router conventions, and your existing route patterns…
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-emerald-500" data-pop>
-            <ShieldCheck className="size-3.5" />
-            No more guessing commands or conventions.
-          </div>
-        </div>
-      </BrowserChrome>
-    </div>
   );
 }
 
@@ -397,85 +340,88 @@ function SceneEditor() {
 /* Static fallback (reduced motion / no JS)                            */
 /* ------------------------------------------------------------------ */
 
-function StaticStory() {
+function StaticDemo() {
   return (
-    <div className="mx-auto w-full max-w-3xl px-5 py-10">
-      <div className="relative">
-        <div
-          className="absolute left-[27px] top-2 bottom-2 w-px bg-border sm:left-[31px]"
-          aria-hidden
-        />
-        <div className="space-y-6">
-          {STEPS.map((step) => (
-            <div key={step.n} className="relative flex gap-4 sm:gap-6">
-              <div className="relative z-10 grid size-14 shrink-0 place-items-center rounded-full border border-border bg-background font-mono text-sm sm:size-16">
-                {step.n}
-              </div>
-              <Card className="flex-1 p-5">
-                <h3 className="text-lg font-semibold">{step.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  {step.body}
-                </p>
-              </Card>
+    <div className="mx-auto max-w-2xl">
+      <BrowserChrome url="gitvane.app" label="GitVane">
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
+          <Search className="size-4 text-muted-foreground" />
+          <span className="flex-1 truncate font-mono text-xs sm:text-sm">
+            {REPO_URL}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-md bg-foreground px-2.5 py-1.5 text-xs font-medium text-background">
+            Analyze <ArrowRight className="size-3" />
+          </span>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+          {FILES.map((f) => (
+            <div
+              key={f.name}
+              className="flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1.5"
+            >
+              {f.icon}
+              <span className="truncate font-mono text-[11px]">{f.name}</span>
+              <Check className="ml-auto size-3 text-emerald-500" />
             </div>
           ))}
         </div>
-      </div>
+      </BrowserChrome>
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* Why GitVane is different + Free/Pro                                 */
+/* Why GitVane is different + Free/Pro + comparison                    */
 /* ------------------------------------------------------------------ */
 
 function Differentiator() {
   return (
     <div className="mx-auto w-full max-w-4xl px-5 py-20">
-      <div className="rounded-2xl border border-border bg-muted/30 p-8 text-center sm:p-10">
+      <div className="mb-10 text-center">
         <h2 className="text-2xl font-semibold tracking-tight">
           Not a one-time summary. Operating files that live in the repo.
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground">
-          Most tools turn a repo into a diagram or a chat you throw away.
-          GitVane commits persistent agent files that keep helping every future
-          AI coding session.
+          Most tools turn a repo into a diagram or a chat you throw away. GitVane
+          commits persistent agent files that keep helping every future AI session.
         </p>
+      </div>
 
-        <div className="mt-8 grid gap-4 text-left sm:grid-cols-2">
-          <Card className="p-6">
-            <Badge variant="muted" className="mb-3">
-              Free
-            </Badge>
-            <p className="text-sm text-muted-foreground">
-              Deterministic, facts-only files generated from your repo — no API
-              key needed. Score, AGENTS.md, llms.txt, editor rules, validation
-              and failure-mode guides.
-            </p>
-          </Card>
-          <Card className="border-amber-500/30 p-6">
-            <Badge className="mb-3 gap-1 border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400">
-              <Sparkles className="size-3" />
-              Pro
-            </Badge>
-            <p className="text-sm text-muted-foreground">
-              LLM-written, repo-specific prose on every file, plus specialized
-              outputs: design-system, api-map, auth-flow, path-scoped rules, and
-              deep analysis.
-            </p>
-          </Card>
-        </div>
+      <BeforeAfter />
 
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Button asChild size="lg">
-            <Link href="/">
-              Analyze a repo <ArrowRight />
-            </Link>
-          </Button>
-          <Button asChild variant="outline" size="lg">
-            <Link href="/docs">See the files</Link>
-          </Button>
-        </div>
+      <div className="mt-10 grid gap-4 text-left sm:grid-cols-2">
+        <Card className="p-6">
+          <Badge variant="muted" className="mb-3">
+            Free
+          </Badge>
+          <p className="text-sm text-muted-foreground">
+            Deterministic, facts-only files generated from your repo — no API key
+            needed. Score, AGENTS.md, llms.txt, editor rules, validation and
+            failure-mode guides.
+          </p>
+        </Card>
+        <Card className="border-amber-500/30 p-6">
+          <Badge className="mb-3 gap-1 border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+            <Sparkles className="size-3" />
+            Pro
+          </Badge>
+          <p className="text-sm text-muted-foreground">
+            LLM-written, repo-specific prose on every file, plus specialized
+            outputs: design-system, api-map, auth-flow, path-scoped rules, and deep
+            analysis.
+          </p>
+        </Card>
+      </div>
+
+      <div className="mt-10 flex flex-wrap justify-center gap-3">
+        <Button asChild size="lg">
+          <Link href="/">
+            Analyze a repo <ArrowRight />
+          </Link>
+        </Button>
+        <Button asChild variant="outline" size="lg">
+          <Link href="/docs">See the files</Link>
+        </Button>
       </div>
     </div>
   );

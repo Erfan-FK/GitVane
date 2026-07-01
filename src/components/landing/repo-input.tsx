@@ -60,26 +60,26 @@ export function RepoInput() {
 
   return (
     <div className="w-full">
-      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-shadow focus-within:border-foreground/30 focus-within:shadow-md">
+      <div className="overflow-hidden rounded-2xl border-2 border-border bg-card shadow-md ring-1 ring-foreground/5 transition-all focus-within:border-foreground/40 focus-within:shadow-lg focus-within:ring-foreground/10">
         <form
           onSubmit={(e) => {
             e.preventDefault();
             submit(value);
           }}
-          className="flex items-center gap-2 px-3 py-2.5"
+          className="flex items-center gap-2 px-4 py-3"
         >
-          <Search className="ml-1 size-5 shrink-0 text-muted-foreground" />
+          <Search className="ml-0.5 size-6 shrink-0 text-muted-foreground" />
           <Input
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="https://github.com/owner/repo"
+            placeholder="Paste a GitHub repo URL or owner/repo…"
             aria-label="GitHub repository URL"
-            className="h-11 border-0 bg-transparent px-1 text-base shadow-none focus-visible:ring-0"
+            className="h-14 border-0 bg-transparent px-1.5 text-lg shadow-none focus-visible:ring-0"
             autoFocus
             spellCheck={false}
             autoComplete="off"
           />
-          <Button type="submit" size="lg" className="shrink-0" disabled={isPending}>
+          <Button type="submit" size="lg" className="h-12 shrink-0 px-5 text-base" disabled={isPending}>
             {isPending ? (
               <>
                 <LoaderCircle className="animate-spin" />

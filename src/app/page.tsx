@@ -6,7 +6,7 @@ export default function Home() {
   return (
     <>
       <SiteHeader />
-      <main className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-5 py-16">
+      <main className="relative flex flex-1 flex-col items-center overflow-hidden px-5 pb-24 pt-[16vh] sm:pt-[20vh]">
         <div className="pointer-events-none absolute inset-0 gv-grid-bg" aria-hidden />
         <div
           className="relative z-10 mx-auto flex w-full max-w-3xl flex-col items-center text-center"
@@ -22,7 +22,7 @@ export default function Home() {
             Generate the files AI agents need to understand your repo.
           </p>
 
-          <div className="mt-9 w-full max-w-xl">
+          <div className="mt-9 w-full max-w-2xl">
             <RepoInput />
           </div>
         </div>

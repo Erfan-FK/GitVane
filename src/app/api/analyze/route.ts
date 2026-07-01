@@ -2,9 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { analyzeRepo } from "@/lib/analyze";
 import { parseRepoInput } from "@/lib/github/parse";
 import { GitHubError } from "@/lib/github/client";
+import { isScopeEmpty, type ScopeOptions } from "@/lib/scope";
 
 export async function POST(request: NextRequest) {
-  let body: { repo?: string; refresh?: boolean };
+  let body: { repo?: string; refresh?: boolean; scope?: ScopeOptions };
   try {
     body = await request.json();
   } catch {
@@ -20,7 +21,10 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await analyzeRepo(parsed.owner, parsed.repo, { refresh: body.refresh });
+    const result = await analyzeRepo(parsed.owner, parsed.repo, {
+      refresh: body.refresh,
+      scope: isScopeEmpty(body.scope) ? null : body.scope,
+    });
     return NextResponse.json(result);
   } catch (err) {
     if (err instanceof GitHubError) {

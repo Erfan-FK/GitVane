@@ -54,6 +54,9 @@
 
 html {
   scroll-behavior: smooth;
+  /* Reserve the scrollbar gutter so content never shifts horizontally when a
+     page grows tall enough to show a scrollbar (e.g. opening Advanced). */
+  scrollbar-gutter: stable;
 }
 
 body {
